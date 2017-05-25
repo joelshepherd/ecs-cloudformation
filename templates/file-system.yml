@@ -1,0 +1,66 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: >
+  joelshepherd/ecs-cloudformation
+  (coming soon) File system stack
+
+Parameters:
+  EnvironmentName:
+    Description: An environment name that will be prefixed to resource names
+    Type: String
+
+  # @TODO Have this work as a list instead
+  # Subnets:
+  #   Description: Choose which subnets the mount points should be deployed to
+  #   Type: List<AWS::EC2::Subnet::Id
+
+  Subnet1:
+    Description: Choose which subnets the mount points should be deployed to
+    Type: AWS::EC2::Subnet::Id
+
+  Subnet2:
+    Description: Choose which subnets the mount points should be deployed to
+    Type: AWS::EC2::Subnet::Id
+
+  SecurityGroup:
+    Description: Select the Security Group to use for the mount points
+    Type: AWS::EC2::SecurityGroup::Id
+
+Resources:
+  FileSystem:
+    Type: AWS::EFS::FileSystem
+    Properties:
+      PerformanceMode: generalPurpose
+      FileSystemTags:
+      - Key: Name
+        Value: !Sub ${EnvironmentName}-file-system
+
+  MountTarget1:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref FileSystem
+      SubnetId: !Ref Subnet1
+      SecurityGroups:
+        - !Ref SecurityGroup
+
+  MountTarget2:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref FileSystem
+      SubnetId: !Ref Subnet2
+      SecurityGroups:
+        - !Ref SecurityGroup
+
+Outputs:
+  MountTarget1:
+    Description: Mount target AZ1
+    Value: !Ref MountTarget1
+
+  MountTarget2:
+    Description: Mount target AZ1
+    Value: !Ref MountTarget2
+
+  FileSystem:
+    Description: File system
+    Value: !Ref FileSystem

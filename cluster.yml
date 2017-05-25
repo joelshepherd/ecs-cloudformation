@@ -1,0 +1,74 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: >
+  joelshepherd/ecs-cloudformation
+  Main stack
+
+Parameters:
+  ClassB:
+    Description: 'Class B of VPC (10.XXX.0.0/16)'
+    Type: Number
+    Default: 0
+    ConstraintDescription: 'Must be in the range [0-255]'
+    MinValue: 0
+    MaxValue: 255
+
+Resources:
+  VPC:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://s3.amazonaws.com/joelshepherd-ecs-cloudformation/templates/vpc.yml
+      Parameters:
+        EnvironmentName: !Ref AWS::StackName
+        VpcCIDR: !Sub '10.${ClassB}.0.0/16'
+        PublicSubnet1CIDR: !Sub '10.${ClassB}.8.0/21'
+        PublicSubnet2CIDR: !Sub '10.${ClassB}.16.0/21'
+        PrivateSubnet1CIDR: !Sub '10.${ClassB}.24.0/21'
+        PrivateSubnet2CIDR: !Sub '10.${ClassB}.32.0/21'
+
+  SecurityGroups:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://s3.amazonaws.com/joelshepherd-ecs-cloudformation/templates/security-groups.yml
+      Parameters:
+        EnvironmentName: !Ref AWS::StackName
+        VPC: !GetAtt VPC.Outputs.VPC
+
+  LoadBalancer:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://s3.amazonaws.com/joelshepherd-ecs-cloudformation/templates/load-balancer.yml
+      Parameters:
+        EnvironmentName: !Ref AWS::StackName
+        VPC: !GetAtt VPC.Outputs.VPC
+        Subnets: !GetAtt VPC.Outputs.PublicSubnets
+        SecurityGroup: !GetAtt SecurityGroups.Outputs.LoadBalancerSecurityGroup
+
+  FileSystem:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://s3.amazonaws.com/joelshepherd-ecs-cloudformation/templates/file-system.yml
+      Parameters:
+        EnvironmentName: !Ref AWS::StackName
+        Subnet1: !GetAtt VPC.Outputs.PrivateSubnet1
+        Subnet2: !GetAtt VPC.Outputs.PrivateSubnet2
+        SecurityGroup: !GetAtt SecurityGroups.Outputs.MountTargetSecurityGroup
+
+  ECSCluster:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://s3.amazonaws.com/joelshepherd-ecs-cloudformation/templates/ecs-cluster.yml
+      Parameters:
+        EnvironmentName: !Ref AWS::StackName
+        InstanceType: t2.small
+        MinSize: 1
+        MaxSize: 10
+        VPC: !GetAtt VPC.Outputs.VPC
+        SecurityGroup: !GetAtt SecurityGroups.Outputs.ECSInstanceSecurityGroup
+        Subnets: !GetAtt VPC.Outputs.PrivateSubnets
+
+Outputs:
+  LoadBalancerURL:
+    Description: The URL endpoint for the load balancer, CNAME away!
+    Value: !GetAtt LoadBalancer.Outputs.LoadBalancerUrl
