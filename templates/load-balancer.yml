@@ -6,7 +6,6 @@ Description: >
   Load balancer stack
 
 Parameters:
-
   EnvironmentName:
     Description: An environment name that will be prefixed to resource names
     Type: String
@@ -24,7 +23,6 @@ Parameters:
     Type: AWS::EC2::SecurityGroup::Id
 
 Resources:
-
   LoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
@@ -52,13 +50,12 @@ Resources:
   DefaultTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      Name: !Sub ${EnvironmentName}-default-target-group
+      Name: !Sub ${EnvironmentName}-defaut
       VpcId: !Ref VPC
       Port: 80
       Protocol: HTTP
 
 Outputs:
-
   LoadBalancer:
     Description: A reference to the Application Load Balancer
     Value: !Ref LoadBalancer

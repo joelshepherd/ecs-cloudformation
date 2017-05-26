@@ -7,12 +7,53 @@ Description: >
 
 Parameters:
   ClassB:
-    Description: 'Class B of VPC (10.XXX.0.0/16)'
+    Description: 'VPC CDIR Class B (ie: 10.XXX.0.0/16)'
     Type: Number
     Default: 0
-    ConstraintDescription: 'Must be in the range [0-255]'
+    ConstraintDescription: Must be between 0 and 255
     MinValue: 0
     MaxValue: 255
+
+  InstanceType:
+    Description: The ECS EC2 instance type
+    Type: String
+    Default: t2.small
+    ConstraintDescription: must be a valid EC2 instance type
+    AllowedValues:
+      - t2.micro
+      - t2.small
+      - t2.medium
+      - m3.medium
+      - m3.large
+      - m3.xlarge
+      - m3.2xlarge
+      - c3.large
+      - c3.xlarge
+      - c3.2xlarge
+      - c3.4xlarge
+      - c3.8xlarge
+      - c4.large
+      - c4.xlarge
+      - c4.2xlarge
+      - c4.4xlarge
+      - c4.8xlarge
+      - r3.large
+      - r3.xlarge
+      - r3.2xlarge
+      - r3.4xlarge
+      - r3.8xlarge
+      - i2.xlarge
+      - i2.2xlarge
+      - i2.4xlarge
+      - i2.8xlarge
+      - d2.xlarge
+      - d2.2xlarge
+      - d2.4xlarge
+      - d2.8xlarge
+      - hi1.4xlarge
+      - hs1.8xlarge
+      - cr1.8xlarge
+      - cc2.8xlarge
 
 Resources:
   VPC:
@@ -61,12 +102,13 @@ Resources:
       TemplateURL: https://s3.amazonaws.com/joelshepherd-ecs-cloudformation/templates/ecs-cluster.yml
       Parameters:
         EnvironmentName: !Ref AWS::StackName
-        InstanceType: t2.small
+        InstanceType: !Ref InstanceType
         MinSize: 1
         MaxSize: 10
         VPC: !GetAtt VPC.Outputs.VPC
         SecurityGroup: !GetAtt SecurityGroups.Outputs.ECSInstanceSecurityGroup
         Subnets: !GetAtt VPC.Outputs.PrivateSubnets
+        FileSystemId: !GetAtt FileSystem.Outputs.FileSystemId
 
 Outputs:
   LoadBalancerURL:

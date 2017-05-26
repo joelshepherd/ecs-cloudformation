@@ -3,7 +3,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 
 Description: >
   joelshepherd/ecs-cloudformation
-  (coming soon) File system stack
+  File system stack
 
 Parameters:
   EnvironmentName:
@@ -53,14 +53,6 @@ Resources:
         - !Ref SecurityGroup
 
 Outputs:
-  MountTarget1:
-    Description: Mount target AZ1
-    Value: !Ref MountTarget1
-
-  MountTarget2:
-    Description: Mount target AZ1
-    Value: !Ref MountTarget2
-
-  FileSystem:
-    Description: File system
+  FileSystemId:
+    Description: File system reference
     Value: !Ref FileSystem

@@ -39,43 +39,47 @@ Parameters:
     Type: List<AWS::EC2::Subnet::Id>
 
   SecurityGroup:
-    Description: Select the Security Group to use for the ECS cluster hosts
+    Description: Select the Security Group to use for the ECS instances
     Type: AWS::EC2::SecurityGroup::Id
+
+  FileSystemId:
+    Description: Select the Elastic File System for the ECS instances
+    Type: String
 
 Mappings:
   # These are the latest ECS optimized AMIs as of February 2017:
   #
-  #   amzn-ami-2016.09.f-amazon-ecs-optimized
-  #   ECS agent:  1.14.0
+  #   amzn-ami-2016.09.g-amazon-ecs-optimized
+  #   ECS agent:  1.14.1
   #   Docker:     1.12.6
-  #   ecs-init:   1.14.0-2
+  #   ecs-init:   1.14.1-1
   #
   # You can find the latest available on this page of our documentation:
   # http://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-optimized_AMI.html
   # (note the AMI identifier is region specific)
   AWSRegionToAMI:
     us-east-1:
-      AMI: ami-b2df2ca4
+      AMI: ami-275ffe31
     us-east-2:
-      AMI: ami-832b0ee6
+      AMI: ami-62745007
     us-west-1:
-      AMI: ami-dd104dbd
+      AMI: ami-689bc208
     us-west-2:
-      AMI: ami-022b9262
+      AMI: ami-62d35c02
     eu-west-1:
-      AMI: ami-a7f2acc1
+      AMI: ami-95f8d2f3
     eu-west-2:
-      AMI: ami-3fb6bc5b
+      AMI: ami-bf9481db
     eu-central-1:
-      AMI: ami-ec2be583
+      AMI: ami-085e8a67
     ap-northeast-1:
-      AMI: ami-c393d6a4
+      AMI: ami-f63f6f91
     ap-southeast-1:
-      AMI: ami-a88530cb
+      AMI: ami-b4ae1dd7
     ap-southeast-2:
-      AMI: ami-8af8ffe9
+      AMI: ami-fbe9eb98
     ca-central-1:
-      AMI: ami-ead5688e
+      AMI: ami-ee58e58a
 
 Resources:
   ECSCluster:
@@ -115,17 +119,30 @@ Resources:
       IamInstanceProfile: !Ref ECSInstanceProfile
       UserData:
         "Fn::Base64": !Sub |
-          #!/bin/bash -xe
+          #!/bin/bash
+          echo ECS_CLUSTER=${ECSCluster} >> /etc/ecs/ecs.config
+
           yum install -y aws-cfn-bootstrap
           /opt/aws/bin/cfn-init -v --region ${AWS::Region} --stack ${AWS::StackName} --resource ECSLaunchConfiguration
-          /opt/aws/bin/cfn-signal -e $? --region ${AWS::Region} --stack ${AWS::StackName} --resource ECSAutoScalingGroup
 
+          # EFS mount
+          EC2_AVAIL_ZONE=`curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone`
+          EFS_FILE_SYSTEM_ID=${FileSystemId}
+          EC2_REGION=${AWS::Region}
+          DIR_SRC=$EC2_AVAIL_ZONE.$EFS_FILE_SYSTEM_ID.efs.$EC2_REGION.amazonaws.com
+          DIR_TGT=/mnt/efs
+
+          mkdir $DIR_TGT
+          mount -t nfs4 $DIR_SRC:/ $DIR_TGT
+          echo -e \"$DIR_SRC:/ \t\t $DIR_TGT \t\t nfs \t\t defaults \t\t 0 \t\t 0\" | tee -a /etc/fstab
+
+          service docker stop
+          service docker start
+
+          /opt/aws/bin/cfn-signal -e $? --region ${AWS::Region} --stack ${AWS::StackName} --resource ECSAutoScalingGroup
     Metadata:
       AWS::CloudFormation::Init:
         config:
-          commands:
-            01_add_instance_to_cluster:
-              command: !Sub echo ECS_CLUSTER=${ECSCluster} >> /etc/ecs/ecs.config
           files:
             "/etc/cfn/cfn-hup.conf":
               mode: 000400
@@ -135,14 +152,15 @@ Resources:
                 [main]
                 stack=${AWS::StackId}
                 region=${AWS::Region}
-
             "/etc/cfn/hooks.d/cfn-auto-reloader.conf":
               content: !Sub |
                 [cfn-auto-reloader-hook]
                 triggers=post.update
                 path=Resources.ContainerInstances.Metadata.AWS::CloudFormation::Init
                 action=/opt/aws/bin/cfn-init -v --region ${AWS::Region} --stack ${AWS::StackName} --resource ECSLaunchConfiguration
-
+          packages:
+            yum:
+              - nfs-utils
           services:
             sysvinit:
               cfn-hup:
@@ -182,7 +200,6 @@ Resources:
               "Statement": [{
                 "Effect": "Allow",
                 "Action": [
-                  "ecs:CreateCluster",
                   "ecs:DeregisterContainerInstance",
                   "ecs:DiscoverPollEndpoint",
                   "ecs:Poll",
