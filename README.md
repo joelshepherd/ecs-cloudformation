@@ -12,14 +12,13 @@ for small-to-medium size businesses and price points.
 
 ## Features
 - VPC with private and public subnets across two availability zones
-- Autoscaling ECS cluster in the private subnet (triggers not yet setup)
+- Autoscaling ECS cluster with instances placed in the private subnets
 - Persistent EFS storage shared across all ECS instances
 - Application Load Balancer in front on the ECS cluster
 - Security Groups locking resources down to just those that need them
 
 ## Coming soon
 - Template to deploy applications to clusters
-- Autoscaling triggers for the ECS cluster
 - Bastion server for SSH access to private resources (ECS instances, EFS, etc.)
 
 Adapted from `awslabs/ecs-refarch-cloudformation` and

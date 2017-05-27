@@ -25,11 +25,6 @@ Parameters:
     Type: Number
     Default: 10
 
-  DesiredCapacity:
-    Description: Initial number of ECS nodes to deploy
-    Type: Number
-    Default: 2
-
   VPC:
     Description: Choose which VPC this ECS cluster should be deployed to
     Type: AWS::EC2::VPC::Id
@@ -82,19 +77,19 @@ Mappings:
       AMI: ami-ee58e58a
 
 Resources:
-  ECSCluster:
+  Cluster:
     Type: AWS::ECS::Cluster
     Properties:
       ClusterName: !Sub ${EnvironmentName}-cluster
 
-  ECSAutoScalingGroup:
+  AutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
       VPCZoneIdentifier: !Ref Subnets
-      LaunchConfigurationName: !Ref ECSLaunchConfiguration
+      LaunchConfigurationName: !Ref LaunchConfiguration
       MinSize: !Ref MinSize
       MaxSize: !Ref MaxSize
-      DesiredCapacity: !Ref DesiredCapacity
+      DesiredCapacity: !Ref MinSize
       Tags:
         - Key: Name
           Value: !Sub ${EnvironmentName}-ecs-instance
@@ -109,21 +104,107 @@ Resources:
         PauseTime: PT15M
         WaitOnResourceSignals: true
 
-  ECSLaunchConfiguration:
+  ScaleUpPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AdjustmentType: PercentChangeInCapacity
+      MinAdjustmentStep: 1
+      AutoScalingGroupName: !Ref AutoScalingGroup
+      Cooldown: 300
+      ScalingAdjustment: 25
+
+  ScaleDownPolicy:
+    Type: 'AWS::AutoScaling::ScalingPolicy'
+    Properties:
+      AdjustmentType: PercentChangeInCapacity
+      MinAdjustmentStep: 1
+      AutoScalingGroupName: !Ref AutoScalingGroup
+      Cooldown: 300
+      ScalingAdjustment: -25
+
+  CPUReservationHighAlarm:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: 'Cluster is running out of CPU (reservation)'
+      Namespace: 'AWS/ECS'
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref Cluster
+      MetricName: CPUReservation
+      ComparisonOperator: GreaterThanThreshold
+      Statistic: Average # special rule because we scale on reservations and not utilization
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 80
+      AlarmActions:
+        - !Ref ScaleUpPolicy
+
+  MemoryReservationHighAlarm:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: 'Cluster is running out of memory (reservation)'
+      Namespace: 'AWS/ECS'
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref Cluster
+      MetricName: MemoryReservation
+      ComparisonOperator: GreaterThanThreshold
+      Statistic: Average # special rule because we scale on reservations and not utilization
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 80
+      AlarmActions:
+        - !Ref ScaleUpPolicy
+
+  CPUReservationLowAlarm:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: 'Cluster is wasting CPU (reservation)'
+      Namespace: 'AWS/ECS'
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref Cluster
+      MetricName: CPUReservation
+      ComparisonOperator: LessThanThreshold
+      Statistic: Average # special rule because we scale on reservations and not utilization
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 20
+      AlarmActions:
+        - !Ref ScaleDownPolicy
+
+  MemoryReservationLowAlarm:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: 'Cluster is wasting memory (reservation)'
+      Namespace: 'AWS/ECS'
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref Cluster
+      MetricName: MemoryReservation
+      ComparisonOperator: LessThanThreshold
+      Statistic: Average # special rule because we scale on reservations and not utilization
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 20
+      AlarmActions:
+        - !Ref ScaleDownPolicy
+
+  LaunchConfiguration:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
       ImageId:  !FindInMap [AWSRegionToAMI, !Ref "AWS::Region", AMI]
       InstanceType: !Ref InstanceType
       SecurityGroups:
         - !Ref SecurityGroup
-      IamInstanceProfile: !Ref ECSInstanceProfile
+      IamInstanceProfile: !Ref InstanceProfile
       UserData:
         "Fn::Base64": !Sub |
           #!/bin/bash
-          echo ECS_CLUSTER=${ECSCluster} >> /etc/ecs/ecs.config
+          echo ECS_CLUSTER=${Cluster} >> /etc/ecs/ecs.config
 
           yum install -y aws-cfn-bootstrap
-          /opt/aws/bin/cfn-init -v --region ${AWS::Region} --stack ${AWS::StackName} --resource ECSLaunchConfiguration
+          /opt/aws/bin/cfn-init -v --region ${AWS::Region} --stack ${AWS::StackName} --resource LaunchConfiguration
 
           # EFS mount
           EC2_AVAIL_ZONE=`curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone`
@@ -139,7 +220,7 @@ Resources:
           service docker stop
           service docker start
 
-          /opt/aws/bin/cfn-signal -e $? --region ${AWS::Region} --stack ${AWS::StackName} --resource ECSAutoScalingGroup
+          /opt/aws/bin/cfn-signal -e $? --region ${AWS::Region} --stack ${AWS::StackName} --resource AutoScalingGroup
     Metadata:
       AWS::CloudFormation::Init:
         config:
@@ -157,7 +238,7 @@ Resources:
                 [cfn-auto-reloader-hook]
                 triggers=post.update
                 path=Resources.ContainerInstances.Metadata.AWS::CloudFormation::Init
-                action=/opt/aws/bin/cfn-init -v --region ${AWS::Region} --stack ${AWS::StackName} --resource ECSLaunchConfiguration
+                action=/opt/aws/bin/cfn-init -v --region ${AWS::Region} --stack ${AWS::StackName} --resource LaunchConfiguration
           packages:
             yum:
               - nfs-utils
@@ -178,7 +259,7 @@ Resources:
   # to other AWS services. Please note that this role will be used by ALL containers
   # running on the ECS host.
 
-  ECSRole:
+  Role:
     Type: AWS::IAM::Role
     Properties:
       Path: /
@@ -217,14 +298,14 @@ Resources:
               }]
             }
 
-  ECSInstanceProfile:
+  InstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
       Path: /
       Roles:
-        - !Ref ECSRole
+        - !Ref Role
 
 Outputs:
   Cluster:
     Description: A reference to the ECS cluster
-    Value: !Ref ECSCluster
+    Value: !Ref Cluster
