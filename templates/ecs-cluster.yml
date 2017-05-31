@@ -203,7 +203,7 @@ Resources:
           #!/bin/bash
           echo ECS_CLUSTER=${Cluster} >> /etc/ecs/ecs.config
 
-          yum install -y aws-cfn-bootstrap
+          yum install -y aws-cfn-bootstrap nfs-utils
           /opt/aws/bin/cfn-init -v --region ${AWS::Region} --stack ${AWS::StackName} --resource LaunchConfiguration
 
           # EFS mount
@@ -239,9 +239,6 @@ Resources:
                 triggers=post.update
                 path=Resources.ContainerInstances.Metadata.AWS::CloudFormation::Init
                 action=/opt/aws/bin/cfn-init -v --region ${AWS::Region} --stack ${AWS::StackName} --resource LaunchConfiguration
-          packages:
-            yum:
-              - nfs-utils
           services:
             sysvinit:
               cfn-hup:

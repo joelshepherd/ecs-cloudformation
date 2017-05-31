@@ -5,7 +5,6 @@ Description: >
   joelshepherd/ecs-cloudformation
   (coming soon) App stack
 
-
 Parameters:
   GitHubUser:
     Type: String
