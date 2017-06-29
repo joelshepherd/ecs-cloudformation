@@ -90,6 +90,7 @@ Resources:
       MinSize: !Ref MinSize
       MaxSize: !Ref MaxSize
       DesiredCapacity: !Ref MinSize
+      Cooldown: 60
       Tags:
         - Key: Name
           Value: !Sub ${EnvironmentName}-ecs-instance
