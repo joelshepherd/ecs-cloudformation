@@ -103,7 +103,7 @@ Resources:
       Parameters:
         EnvironmentName: !Ref AWS::StackName
         InstanceType: !Ref InstanceType
-        MinSize: 1
+        MinSize: 2
         MaxSize: 10
         VPC: !GetAtt VPC.Outputs.VPC
         SecurityGroup: !GetAtt SecurityGroups.Outputs.ECSInstanceSecurityGroup
