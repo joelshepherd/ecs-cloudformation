@@ -89,7 +89,6 @@ Resources:
       LaunchConfigurationName: !Ref LaunchConfiguration
       MinSize: !Ref MinSize
       MaxSize: !Ref MaxSize
-      DesiredCapacity: !Ref MinSize
       Cooldown: 60
       Tags:
         - Key: Name
