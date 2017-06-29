@@ -110,7 +110,7 @@ Resources:
       AdjustmentType: PercentChangeInCapacity
       MinAdjustmentStep: 1
       AutoScalingGroupName: !Ref AutoScalingGroup
-      Cooldown: 60
+      Cooldown: 300
       ScalingAdjustment: 25
 
   ScaleDownPolicy:
@@ -118,7 +118,7 @@ Resources:
     Properties:
       AdjustmentType: ChangeInCapacity
       AutoScalingGroupName: !Ref AutoScalingGroup
-      Cooldown: 300
+      Cooldown: 900
       ScalingAdjustment: -1
 
   MemoryReservationHighAlarm:
@@ -150,8 +150,8 @@ Resources:
       ComparisonOperator: LessThanThreshold
       Statistic: Maximum
       Period: 60
-      EvaluationPeriods: 1
-      Threshold: 40
+      EvaluationPeriods: 15
+      Threshold: 30
       AlarmActions:
         - !Ref ScaleDownPolicy
 
