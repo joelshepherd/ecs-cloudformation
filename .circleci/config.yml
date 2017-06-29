@@ -1,0 +1,22 @@
+version: 2
+
+jobs:
+  build:
+    docker:
+      - image: anigeo/awscli
+    environment:
+      - AWS_DEFAULT_REGION: us-west-2
+    working_directory: ~/build
+    steps:
+      - checkout
+      - run:
+          name: Deploy template to aws s3
+          command: |
+            aws s3 sync \
+              --delete \
+              --acl public-read \
+              --exclude "*" \
+              --include "*.md" \
+              --include "*.yml" \
+              --exclude ".circleci/*" \
+              . s3://joelshepherd-ecs-cloudformation
