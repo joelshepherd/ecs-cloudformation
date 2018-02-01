@@ -172,6 +172,7 @@ Resources:
         - DeviceName: '/dev/xvdcz'
           Ebs:
             VolumeSize: 42
+            VolumeType: gp2
       SecurityGroups:
         - !Ref SecurityGroup
       IamInstanceProfile: !Ref InstanceProfile
