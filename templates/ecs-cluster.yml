@@ -42,39 +42,47 @@ Parameters:
     Type: String
 
 Mappings:
-  # These are the latest ECS optimized AMIs as of February 2017:
-  #
-  #   amzn-ami-2017.03.d-amazon-ecs-optimized
-  #   ECS agent:  1.14.3
-  #   Docker:     17.03.1-ce
-  #   ecs-init:   1.14.3-1
-  #
-  # You can find the latest available on this page of our documentation:
-  # http://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-optimized_AMI.html
-  # (note the AMI identifier is region specific)
-  AWSRegionToAMI:
-    us-east-1:
-      AMI: ami-04351e12
-    us-east-2:
-      AMI: ami-207b5a45
-    us-west-1:
-      AMI: ami-7d664a1d
-    us-west-2:
-      AMI: ami-57d9cd2e
-    eu-west-1:
-      AMI: ami-809f84e6
-    eu-west-2:
-      AMI: ami-ff15039b
-    eu-central-1:
-      AMI: ami-a3a006cc
-    ap-northeast-1:
-      AMI: ami-e4657283
-    ap-southeast-1:
-      AMI: ami-19f7787a
-    ap-southeast-2:
-      AMI: ami-42e9f921
-    ca-central-1:
-      AMI: ami-3da81759
+    # These are the latest ECS optimized AMIs as of Jan 2018:
+    #
+    #   amzn-ami-2017.09.g-amazon-ecs-optimized
+    #   ECS agent:    1.16.2
+    #   Docker:       17.09.1-ce
+    #   ecs-init:     1.16.2-1
+    #
+    # You can find the latest available on this page of our documentation:
+    # http://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-optimized_AMI.html
+    # (note the AMI identifier is region specific)
+    AWSRegionToAMI:
+        us-east-2:
+            AMI: ami-ce1c36ab
+        us-east-1:
+            AMI: ami-28456852
+        us-west-2:
+            AMI: ami-decc7fa6
+        us-west-1:
+            AMI: ami-74262414
+        eu-west-3:
+            AMI: ami-9aef59e7
+        eu-west-2:
+            AMI: ami-67cbd003
+        eu-west-1:
+            AMI: ami-1d46df64
+        eu-central-1:
+            AMI: ami-509a053f
+        ap-northeast-2:
+            AMI: ami-c212b2ac
+        ap-northeast-1:
+            AMI: ami-872c4ae1
+        ap-southeast-2:
+            AMI: ami-58bb443a
+        ap-southeast-1:
+            AMI: ami-910d72ed
+        ca-central-1:
+            AMI: ami-435bde27
+        ap-south-1:
+            AMI: ami-00491f6f
+        sa-east-1:
+            AMI: ami-af521fc3
 
 Resources:
   Cluster:
@@ -160,6 +168,10 @@ Resources:
     Properties:
       ImageId:  !FindInMap [AWSRegionToAMI, !Ref "AWS::Region", AMI]
       InstanceType: !Ref InstanceType
+      BlockDeviceMappings:
+        - DeviceName: '/dev/xvdcz'
+          Ebs:
+            VolumeSize: 42
       SecurityGroups:
         - !Ref SecurityGroup
       IamInstanceProfile: !Ref InstanceProfile
